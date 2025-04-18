@@ -13,7 +13,7 @@ from cms.utils.plugins import get_bound_plugins
 
 
 def _get_placeholder_slot(category):
-    return f'module-category-{category.pk}'
+    return f"module-category-{category.pk}"
 
 
 @receiver(pre_placeholder_operation)
@@ -22,52 +22,51 @@ def sync_module_plugin(sender, **kwargs):
     Updates the created placeholder operation record,
     based on the configured post operation handlers.
     """
-    operation_type = kwargs.pop('operation')
+    operation_type = kwargs.pop("operation")
     affected_operations = (operations.MOVE_PLUGIN, operations.PASTE_PLUGIN)
 
     if operation_type not in affected_operations:
         return
 
     try:
-        match = resolve(kwargs['origin'])
+        match = resolve(kwargs["origin"])
     except Resolver404:
         match = None
 
-    is_in_modules = match and match.url_name == 'cms_modules_list'
+    is_in_modules = match and match.url_name == "cms_modules_list"
 
     if not is_in_modules:
         return
 
-    plugin = kwargs['plugin']
-    placeholder = kwargs.get('target_placeholder')
+    plugin = kwargs["plugin"]
+    placeholder = kwargs.get("target_placeholder")
     needs_sync = (
-        plugin.plugin_type
-        == 'Module'
-        and placeholder.pk
-        != plugin.module_category.modules_id
+        plugin.plugin_type == "Module"
+        and placeholder.pk != plugin.module_category.modules_id
     )
 
     if needs_sync:
         # User has moved module to another category placeholder
         # or pasted a copied module plugin.
         new_category = Category.objects.get(modules=placeholder)
-        (ModulePlugin
-         .objects
-         .filter(path__startswith=plugin.path, depth__gte=plugin.depth)
-         .update(module_category=new_category))
+        (
+            ModulePlugin.objects.filter(
+                path__startswith=plugin.path, depth__gte=plugin.depth
+            ).update(module_category=new_category)
+        )
 
 
 class Category(models.Model):
     name = models.CharField(
-        verbose_name=_('Name'),
+        verbose_name=_("Name"),
         max_length=120,
         unique=True,
     )
     modules = PlaceholderField(slotname=_get_placeholder_slot)
 
     class Meta:
-        verbose_name = _('Category')
-        verbose_name_plural = _('Categories')
+        verbose_name = _("Category")
+        verbose_name_plural = _("Categories")
 
     def __str__(self):
         return self.name
@@ -79,15 +78,14 @@ class Category(models.Model):
     def get_non_empty_modules(self):
         unbound_plugins = (
             self
-            .modules
-            .get_plugins(language=settings.LANGUAGE_CODE)
-            .filter(parent__isnull=True, numchild__gte=1)
+            .modules.get_plugins(language=settings.LANGUAGE_CODE)
+            # .filter(parent__isnull=True, numchild__gte=1)
+            .filter(parent__isnull=True)
         )
         return get_bound_plugins(unbound_plugins)
 
 
 class ModulesPlaceholder(Placeholder):
-
     class Meta:
         proxy = True
 
@@ -110,12 +108,12 @@ class ModulesPlaceholder(Placeholder):
 
 class ModulePlugin(CMSPlugin):
     module_name = models.CharField(
-        verbose_name=_('Name'),
+        verbose_name=_("Name"),
         max_length=120,
     )
     module_category = models.ForeignKey(
         to=Category,
-        verbose_name=_('Category'),
+        verbose_name=_("Category"),
         on_delete=models.CASCADE,
     )
 
@@ -129,4 +127,4 @@ class ModulePlugin(CMSPlugin):
         return
 
     def get_unbound_plugins(self):
-        return CMSPlugin.get_tree(self).order_by('path')
+        return CMSPlugin.get_tree(self).order_by("path")
